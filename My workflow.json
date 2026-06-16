@@ -1,0 +1,1353 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = [\n  { url: \"https://www.01net.com/rss/actualites/\", source: \"01net\" },\n  { url: \"https://industrialcyber.co/feed/\", source: \"Industrial Cyber\" },\n  { url: \"https://www.cert.ssi.gouv.fr/feed/\", source: \"CERT-FR\" },\n  { url: \"https://securityaffairs.com/feed\", source: \"Security Affairs\" },\n  { url: \"https://therecord.media/feed\", source: \"The Record\" },\n];\n\nreturn items.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2400,
+        -336
+      ],
+      "id": "bb9f5983-2d7f-4dd6-b191-f34b1a0d97ce",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2112,
+        -336
+      ],
+      "id": "bf6b5be1-a705-43c4-970a-a2691778ebfd",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url || $json.URL }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1760,
+        -464
+      ],
+      "id": "28f9a862-fba1-4bda-ba20-fdbe062768e0",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  item.json.cleanedXml = item.json.data.replace(/&/g, '&amp;');\n}\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1408,
+        -336
+      ],
+      "id": "516043f9-fc8a-4692-a821-bb54032cbefa",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "dataPropertyName": "cleanedXml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        -1888,
+        176
+      ],
+      "id": "096f3f6b-2e84-4d42-accc-777b1a215474",
+      "name": "XML",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const input of $input.all()) {\n  const rss = input.json.rss;\n  \n  // Récupère la structure principale du flux (gère les variantes de nom \"canal\" ou \"channel\")\n  const canal = rss && (rss.canal || rss.channel);\n  if (!canal) continue; // Si le flux est vide ou invalide, passe au suivant\n\n  // Récupère la liste des articles (gère toutes les variantes de balises possibles)\n  const articles = canal.article || canal.item || canal.entry || [];\n\n  // Récupère les données des articles\n  for (const article of articles) {\n    const cat = article.Catégorie || article.catégorie || article.Categories || article.categories || article.category || [];\n    const titre = article.Titre || article.titre || article.title || '';\n\n    \n    \n   // ------------------------------------------ HASH Unique\n\n    \n    const str = titre.toLowerCase().trim();\n    let hash = 0;                                   // transformer le texte du titre en nombre unique\n    for (let i = 0; i < str.length; i++) {\n      const char = str.charCodeAt(i);\n      hash = ((hash << 5) - hash) + char;\n      hash = hash & hash; // (32-bit)\n    }\n    \n    const hashStr = Math.abs(hash).toString(16).padStart(8, '0');  // Transforme le nombre en une chaîne de 8 caractères hexadécimaux\n    \n // ------------------------------------------ PUSH\n    \n    // Push les articles formalisé dans le tableau final en sortie\n    items.push({ json: {\n      hash: hashStr,\n      titre,\n      lien: article.Lien || article.lien || article.link,\n      date: article['date de publication'] || article.pubDate, \n      auteur: Array.isArray(article['dc:creator']) ? article['dc:creator'][0] : article['dc:creator'],\n      description: (article.Description || article.description || '').replace(/<[^>]*>/g, '').trim(),\n      // Fusionne les catégories en une seule chaîne de texte séparée par des virgules si c'est une liste\n      categories: Array.isArray(cat) ? cat.join(', ') : cat\n    }});\n  }\n}\n\n// 5. Return la liste finale des articles\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        176
+      ],
+      "id": "2de77f6c-58d5-4a3d-a784-49105d0e86e2",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "content": "## Nettoyage XML\n- Nettoyage remplace les & -> &amp",
+        "height": 112,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        -480
+      ],
+      "id": "c99c7795-369b-4a04-a98a-2a7f3ddba9ed",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Initialisation\n• Parcourir une liste de flux RSS stockée en mémoire\n\n",
+        "height": 144,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2448,
+        -512
+      ],
+      "id": "6d32a911-59a5-40f2-942e-c6168df728db",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Conversion \n- XML en JSON",
+        "height": 96,
+        "width": 160,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1920,
+        336
+      ],
+      "id": "bbcd37ca-c1dd-40c3-b444-04d65854c5f2",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Collecte de Flux RSS\n*Parcourt les flux\n*Extrait les articles\n*Génère un hash par titre\n*Retourne la liste propre",
+        "height": 144,
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1664,
+        0
+      ],
+      "id": "345d0449-50f5-4387-a538-8e7fa7420b21",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT hash FROM articles",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1264,
+        176
+      ],
+      "id": "fbe2195b-893f-4f8f-b3c3-4d3c8574df98",
+      "name": "Execute a SQL query",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "fqmJRp9K7lji5Rgf",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Déduplication basée sur la mémoire SQL\nconst existingHashes = new Set(\n  $('Execute a SQL query').all().map(i => i.json.hash)\n);\n\n// supprime les doublons existant et les rejette\nconst newItems = $('Code in JavaScript2').all().filter(item =>\n  !existingHashes.has(item.json.hash)\n);\n\n// -- mot clé que l'article doit avoir\nconst CYBER_THREAT_PATTERNS = [\n  /\\bcyber/, /\\bataque/, /\\battack/, /\\bbreach/, /\\bzero[- ]day/, /\\bransomware/, \n  /\\bfaill/, /\\bvulnerab/, /\\bpirat/, /\\bmalware/, /\\bintrus/, /\\bfaill/,\n  /\\bexfiltr/, /\\bcomprom/, /\\bapit\\b/, /\\bthreat/, /\\bexploit/, /\\bpoC\\b/\n];\n\n\nconst ASSET_AND_TECH_PATTERNS = [\n  // --- Métiers SUEZ (Water / Waste Management) ---\n  /\\bwater/, /\\beau\\b/, /\\bhydraul/, /\\bwastewater/, /\\bassainiss/, /\\bsemma\\b/,\n  /\\bwaste/, /\\bdéchet/, /\\brecycl/, /\\border\\b/, /\\binciner/, /\\bcompost/,\n  \n  // --- Énergie\n  /\\benerg/, /\\bsmart[- ]meter/, /\\blinky/, /\\butilit/, /\\bgrid/,\n  \n  // --- Informatique Industrielle (OT / ICS)\n  /\\bscada/, /\\bplc\\b/, /\\bdcs\\b/, /\\bopc\\b/, /\\bindustrial/, /\\bindustrie/,\n  /\\bautomati/, /\\bics\\b/, /\\btelemetr/, /\\binfrastructure[s]? critique[s]?/,\n  \n  // --- Constructeurs OT Critiques ---\n  /\\bschneider/, /\\bsiemens/, /\\brockwell/, /\\babb\\b/, /\\bge\\b/, /\\bfoxboro/, /\\becostruxure/,\n  \n  // --- Stack IT d'Entreprise sensible ---\n  /\\bazure/, /\\bmicrosoft\\b/, /\\bzscaler/, /\\bcrowdstrike/, /\\bsplunk/, /\\bsap\\b/\n];\n\nreturn newItems.filter(item => {\n  const text = (\n    (item.json.titrePropre ?? item.json.titre ?? item.json.title ?? \"\") + \" \" +\n    (item.json.DescriptionPropre ?? item.json.description ?? item.json.contentSnippet ?? item.json.content ?? \"\") + \" \" +\n    (item.json.categories ?? \"\")\n  ).toLowerCase();\n\n  // au moins un mot clé présent \n  const hasThreat = CYBER_THREAT_PATTERNS.some(regex => regex.test(text)); // stock les mot clé dans hasThreat coté cyber\n  const hasTarget = ASSET_AND_TECH_PATTERNS.some(regex => regex.test(text)); // stock les mot clé dans hasThreat coté techno - secteur\n\n  // une menace ET que cela cible un actif d'intérêt pour (SUEZ)\n  return hasThreat && hasTarget;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        624
+      ],
+      "id": "8af2e017-2f8d-4f73-aece-208cfa804276",
+      "name": "Code in JavaScript3",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bccf982b-5c1e-4669-9a91-ab276e3a2720",
+              "name": "hash",
+              "value": "={{$json.hash}}",
+              "type": "string"
+            },
+            {
+              "id": "1eb3810b-8187-4c9a-a834-6b94e175d03b",
+              "name": "auteur",
+              "value": "={{ $json.auteur }}",
+              "type": "string"
+            },
+            {
+              "id": "a3385c5e-bb52-44c7-960a-558516527cd5",
+              "name": "titrePropre",
+              "value": "={{ $json.titre.replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"').replace(/\\n/g, ' ').replace(/\\r/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "09f2a592-8349-4a6e-81a7-211e916361aa",
+              "name": "DescriptionPropre",
+              "value": "={{ $json.description.replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"').replace(/\\n/g, ' ').replace(/\\r/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "3a2e0502-6e4f-44a4-84f4-f871890df151",
+              "name": "categories",
+              "value": "={{ $json.categories }}",
+              "type": "string"
+            },
+            {
+              "id": "3a3e13c5-26ab-4389-aae2-b9ac3aa760e2",
+              "name": "lien",
+              "value": "={{ $json.lien }}",
+              "type": "string"
+            },
+            {
+              "id": "6c318cb6-a665-4a45-8cb2-a4c029899f00",
+              "name": "date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -912,
+        448
+      ],
+      "id": "c5519b7d-196d-4afb-9f7e-b4fe968290d6",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const activeItems = Array.isArray(items) ? items : [items];\n\nfor (let i = 0; i < activeItems.length; i++) {\n  const d = activeItems[i].json;\n\n  // Extraction des données de base\n  const rawTitre = d.titre ?? d.titre_original ?? \"\";\n  const rawResume = d.resume ?? \"\";\n  const lien = d.lien ?? \"#\";\n  const date = d.date ?? \"\";\n  const criticite = Number.isInteger(d.criticite) ? d.criticite : parseInt(d.criticite, 10) || 0;\n  const secteurCible = d.secteur_cible ?? \"Inconnu\";\n\n  // 1. DÉTECTION DE LA LANGUE PAR SCORE\n  const textToAnalyze = (rawTitre + \" \" + rawResume).toLowerCase();\n  const frScore = (textToAnalyze.match(/\\b(le|la|les|des|du|en|pour|dans|une|qui|est|sur|par|avec)\\b/g) || []).length;\n  const enScore = (textToAnalyze.match(/\\b(the|and|of|with|to|for|is|at|on|by|from|warns|has)\\b/g) || []).length;\n  \n  const isEn = enScore > frScore;\n  const txtInconnu = isEn ? \"Unknown\" : \"Inconnu\";\n  const titre = rawTitre || (isEn ? \"No title\" : \"Sans titre\");\n\n  // 2. GESTION BILINGUE DU NIVEAU\n  let rawNiveau = (d.niveau ?? \"\").toString().trim().toLowerCase();\n  let niveau = isEn ? \"Unknown\" : \"Inconnu\";\n\n  if ([\"critique\", \"critical\"].includes(rawNiveau) || criticite >= 8) niveau = isEn ? \"Critical\" : \"Critique\";\n  else if ([\"élevé\", \"eleve\", \"high\"].includes(rawNiveau) || criticite >= 5) niveau = isEn ? \"High\" : \"Élevé\";\n  else if ([\"moyen\", \"medium\"].includes(rawNiveau) || criticite >= 3) niveau = isEn ? \"Medium\" : \"Moyen\";\n  else if ([\"faible\", \"low\"].includes(rawNiveau) || criticite > 0) niveau = isEn ? \"Low\" : \"Faible\";\n\n  // 3. NETTOYAGE DES VALEURS PAR DÉFAUT\n  const cleanVal = (val) => {\n    if (!val) return txtInconnu;\n    const v = val.toString().trim().toLowerCase();\n    if ([\"inconnu\", \"unknown\", \"none\", \"n/a\", \"non spécifié\", \"\"].includes(v)) return txtInconnu;\n    return val;\n  };\n\n  const attaquants = cleanVal(d.attaquants);\n  const victimes = cleanVal(d.victimes);\n  const impact = cleanVal(d.impact);\n  const recommandation = cleanVal(d.recommandation_suez);\n  \n  const techniques = Array.isArray(d.techniques) ? d.techniques : [];\n  const outils = Array.isArray(d.outils_utilises) ? d.outils_utilises : [];\n  const technologies = Array.isArray(d.technologies_concernees) ? d.technologies_concernees : [];\n\n  if (i > 0) await new Promise(r => setTimeout(r, 3000));\n\n  // 4. COULEURS THÈME ANSSI\n  const niveauCfg = {\n    \"Faible\":   { bg: \"#E3E3FD\", border: \"#000091\", text: \"#000091\" },\n    \"Low\":      { bg: \"#E3E3FD\", border: \"#000091\", text: \"#000091\" },\n    \"Moyen\":    { bg: \"#FFF4F3\", border: \"#F95C5E\", text: \"#E1000F\" },\n    \"Medium\":   { bg: \"#FFF4F3\", border: \"#F95C5E\", text: \"#E1000F\" },\n    \"Élevé\":    { bg: \"#FEE9E5\", border: \"#E1000F\", text: \"#E1000F\" },\n    \"High\":     { bg: \"#FEE9E5\", border: \"#E1000F\", text: \"#E1000F\" },\n    \"Critique\": { bg: \"#E1000F\", border: \"#E1000F\", text: \"#FFFFFF\" },\n    \"Critical\": { bg: \"#E1000F\", border: \"#E1000F\", text: \"#FFFFFF\" },\n  }[niveau] ?? { bg: \"#F6F6F6\", border: \"#1E1E1E\", text: \"#1E1E1E\" };\n\n  const barColor = criticite >= 8 ? \"#E1000F\" : criticite >= 5 ? \"#F95C5E\" : \"#000091\";\n\n  // 5. DICTIONNAIRE DE TRADUCTION DE L'HABILLAGE\n  const lbl = isEn ? {\n    subject: `[${niveau.toUpperCase()}] Security Advisory: ${titre}`,\n    header: \"Cyber Watch / Threat Intelligence\",\n    date: \"Publication date\",\n    level: \"LEVEL\",\n    crit: \"GLOBAL CRITICALITY\",\n    summary: \"Threat Summary\",\n    sector: \"Targeted Sector\",\n    analysis: \"Analysis Elements\",\n    attackers: \"Modus Operandi / Attackers\",\n    victims: \"Sectors / Targeted Victims\",\n    impact: \"Technical & Operational Impact\",\n    indicators: \"Indicators & Infrastructure Assets\",\n    mitre: \"Identified MITRE ATT&CK techniques:\",\n    tools: \"Associated tooling / malware:\",\n    techs: \"Impacted systems & supply chain technologies:\",\n    reco: \"Remediation Measures & Recommendations\",\n    cta: \"Consult Full Report\",\n    footer1: \"This is an automated security alert. Do not reply to this email.\",\n    footer2: \"Unsubscribe from alerts\"\n  } : {\n    subject: `[${niveau.toUpperCase()}] Bulletin d'alerte : ${titre}`,\n    header: \"Veille Cyber / Threat Intelligence\",\n    date: \"Date de publication\",\n    level: \"NIVEAU\",\n    crit: \"CRITICITÉ GLOBALE\",\n    summary: \"Synthèse de la menace\",\n    sector: \"Secteur d'activité visé\",\n    analysis: \"Éléments d'analyse\",\n    attackers: \"Mode opératoire / Attaquants\",\n    victimes: \"Secteurs / Victimes ciblées\",\n    impact: \"Impact technique & opérationnel\",\n    indicators: \"Indicateurs, Outils & Technologies\",\n    mitre: \"Techniques MITRE ATT&CK identifiées :\",\n    tools: \"Outillage / Malwares associés :\",\n    techs: \"Technologies & Composants d'infrastructure exposés :\",\n    reco: \"Mesures de remédiation & Recommandations\",\n    cta: \"Consulter le rapport complet\",\n    footer1: \"Ceci est une alerte de sécurité automatisée. Ne pas répondre à cet e-mail.\",\n    footer2: \"Se désinscrire des alertes\"\n  };\n\n  // Génération des tags HTML\n  const tagBase = \"display:inline-block;font-size:12px;padding:4px 8px;margin:2px 4px 2px 0;background-color:#F6F6F6;color:#1E1E1E;border:1px solid #DDDDDD;font-family:Arial,sans-serif;\";\n  const techTags = techniques.map(t => `<span style=\"${tagBase}\">${t}</span>`).join(\"\");\n  const outilTags = outils.map(o => `<span style=\"${tagBase}border-left:3px solid #E1000F;background-color:#FFF4F3;\">${o}</span>`).join(\"\");\n  const technoTags = technologies.map(t => `<span style=\"${tagBase}border-left:3px solid #000091;background-color:#E3E3FD;color:#000091;\">${t}</span>`).join(\"\");\n\n  // Récupération de l'image de couverture\n  let imageUrl = \"\";\n  if (lien && lien !== \"#\") {\n    try {\n      const page = await this.helpers.httpRequest({ method: \"GET\", url: lien, timeout: 2500 });\n      const match = page.match(/<meta[^>]*property=[\"']og:image[\"'][^>]*content=[\"']([^\"']+)[\"']/i) || \n                    page.match(/<meta[^>]*content=[\"']([^\"']+)[\"'][^>]*property=[\"']og:image[\"']/i);\n      if (match) imageUrl = match[1];\n    } catch(e) {}\n  }\n\n  const headerBg = imageUrl\n    ? `background: linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.95)), url('${imageUrl}') center/cover no-repeat;`\n    : `background: #FFFFFF;`;\n\n  try {\n    await this.helpers.httpRequest({\n      method: \"POST\",\n      url: \"https://api.brevo.com/v3/smtp/email\",\n      headers: {\n        \"Content-Type\": \"application/json\",\n        \"api-key\": $env.BREVO_API_KEY\n      },\n      body: {\n        sender: { email: \"benhajkarim73@gmail.com\" },\n        to: [{ email: \"benhajkarim75@gmail.com\" }],\n        subject: lbl.subject,\n        htmlContent: `\n  <div style=\"font-family: 'Marianne', Arial, sans-serif; max-width: 650px; margin: 0 auto; background: #F6F6F6; padding: 20px;\">\n    <div style=\"background: #FFFFFF; border-top: 4px solid #000091; border-bottom: 1px solid #DDDDDD; box-shadow: 0 2px 4px rgba(0,0,0,0.05);\">\n      \n      <div style=\"${headerBg} padding: 32px 40px; border-bottom: 1px solid #EEEEEE;\">\n        <table width=\"100%\" style=\"border-collapse: collapse; margin-bottom: 24px;\">\n          <tr>\n            <td style=\"vertical-align: top;\">\n              <p style=\"font-size: 14px; font-weight: bold; color: #1E1E1E; margin: 0; text-transform: uppercase; letter-spacing: 1px;\">${lbl.header}</p>\n              <p style=\"font-size: 12px; color: #666666; margin: 4px 0 0 0;\">${lbl.date} : ${date}</p>\n            </td>\n            <td style=\"text-align: right; vertical-align: top;\">\n              <span style=\"display: inline-block; font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; padding: 4px 12px; background: ${niveauCfg.bg}; color: ${niveauCfg.text}; border: 1px solid ${niveauCfg.border};\">\n                ${lbl.level} : ${niveau}\n              </span>\n            </td>\n          </tr>\n        </table>\n        \n        <h1 style=\"color: #000091; font-size: 22px; margin: 0 0 16px; line-height: 1.3; font-weight: 800;\">${titre}</h1>\n        \n        <table width=\"100%\" style=\"border-collapse: collapse;\">\n          <tr>\n            <td style=\"width: 140px; font-size: 12px; color: #1E1E1E; font-weight: bold; white-space: nowrap;\">\n              ${lbl.crit}\n            </td>\n            <td style=\"padding: 0 12px;\">\n              <div style=\"background: #EEEEEE; height: 8px; width: 100%; min-width: 150px;\">\n                <div style=\"width: ${Math.min(criticite * 10, 100)}%; height: 100%; background: ${barColor};\"></div>\n              </div>\n            </td>\n            <td style=\"width: 40px; font-size: 14px; font-weight: bold; color: ${barColor}; text-align: right;\">\n              ${criticite}/10\n            </td>\n          </tr>\n        </table>\n      </div>\n\n      <div style=\"padding: 24px 40px; border-bottom: 1px solid #EEEEEE;\">\n        <h2 style=\"font-size: 13px; color: #000091; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px; border-left: 3px solid #000091; padding-left: 8px;\">${lbl.summary}</h2>\n        <p style=\"font-size: 14px; color: #3A3A3A; line-height: 1.6; margin: 0 0 12px;\">${rawResume}</p>\n        <div style=\"font-size: 12px; color: #1E1E1E; background: #F6F6F6; padding: 8px 12px; border-left: 3px solid #666666; display: inline-block;\">\n          <strong>${lbl.sector} :</strong> ${secteurCible}\n        </div>\n      </div>\n\n      <div style=\"padding: 24px 40px; border-bottom: 1px solid #EEEEEE; background: #FAFAFA;\">\n        <h2 style=\"font-size: 13px; color: #000091; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 16px; border-left: 3px solid #000091; padding-left: 8px;\">${lbl.analysis}</h2>\n        \n        <table width=\"100%\" style=\"border-collapse: collapse; table-layout: fixed;\">\n          <tr>\n            <td style=\"padding: 12px; background: #FFFFFF; border: 1px solid #EEEEEE; width: 50%; vertical-align: top;\">\n              <span style=\"font-size: 11px; color: #666666; text-transform: uppercase; display: block; margin-bottom: 4px;\">${lbl.attackers}</span>\n              <div style=\"font-size: 13px; color: #1E1E1E; font-weight: bold;\">${attaquants}</div>\n            </td>\n            <td style=\"padding: 12px; background: #FFFFFF; border: 1px solid #EEEEEE; width: 50%; vertical-align: top;\">\n              <span style=\"font-size: 11px; color: #666666; text-transform: uppercase; display: block; margin-bottom: 4px;\">${isEn ? lbl.victims : lbl.victimes}</span>\n              <div style=\"font-size: 13px; color: #1E1E1E; font-weight: bold;\">${victimes}</div>\n            </td>\n          </tr>\n          <tr>\n            <td colspan=\"2\" style=\"padding: 12px; background: #FFFFFF; border: 1px solid #EEEEEE; border-top: none;\">\n              <span style=\"font-size: 11px; color: #666666; text-transform: uppercase; display: block; margin-bottom: 4px;\">${lbl.impact}</span>\n              <div style=\"font-size: 13px; color: #3A3A3A; line-height: 1.5;\">${impact}</div>\n            </td>\n          </tr>\n        </table>\n      </div>\n\n      ${techTags || outilTags || technoTags ? `\n      <div style=\"padding: 24px 40px; border-bottom: 1px solid #EEEEEE;\">\n        <h2 style=\"font-size: 13px; color: #000091; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 16px; border-left: 3px solid #000091; padding-left: 8px;\">${lbl.indicators}</h2>\n        \n        ${technoTags ? `\n        <div style=\"margin-bottom: 16px;\">\n          <span style=\"font-size: 11px; color: #666666; display: block; margin-bottom: 6px;\">${lbl.techs}</span>\n          <div>${technoTags}</div>\n        </div>\n        ` : \"\"}\n\n        ${outilTags ? `\n        <div style=\"margin-bottom: 16px;\">\n          <span style=\"font-size: 11px; color: #666666; display: block; margin-bottom: 6px;\">${lbl.tools}</span>\n          <div>${outilTags}</div>\n        </div>\n        ` : \"\"}\n\n        ${techTags ? `\n        <div>\n          <span style=\"font-size: 11px; color: #666666; display: block; margin-bottom: 6px;\">${lbl.mitre}</span>\n          <div>${techTags}</div>\n        </div>\n        ` : \"\"}\n      </div>` : \"\"}\n\n      <div style=\"padding: 24px 40px; background: #F4F4FD; border-left: 4px solid #000091;\">\n        <h2 style=\"font-size: 13px; color: #000091; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px;\">${lbl.reco}</h2>\n        <p style=\"font-size: 14px; color: #1E1E1E; line-height: 1.6; margin: 0;\">${recommandation}</p>\n      </div>\n\n      <div style=\"padding: 32px 40px; text-align: center; background: #FFFFFF;\">\n        <a href=\"${lien}\" style=\"display: inline-block; background: #000091; color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: bold; padding: 12px 32px; text-transform: uppercase; letter-spacing: 1px;\">${lbl.cta}</a>\n      </div>\n\n    </div>\n\n    <div style=\"text-align: center; padding: 20px; font-size: 11px; color: #666666;\">\n      <p style=\"margin: 0 0 8px;\">${lbl.footer1}</p>\n      <p style=\"margin: 0;\"><a href=\"#\" style=\"color: #000091; text-decoration: underline;\">${lbl.footer2}</a></p>\n    </div>\n  </div>\n        `\n      },\n      json: true\n    });\n  } catch (mailError) {\n    console.error(`Erreur d'envoi Brevo à l'index ${i}:`, mailError.message);\n  }\n}\n\nreturn activeItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        784
+      ],
+      "id": "3c143376-0466-4b74-99a3-931f8a0d477f",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "content": "## Alerte Mail\n- Envoi des articles",
+        "height": 96,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        784
+      ],
+      "id": "49948e2c-21fd-4c5d-9a28-f94c848992aa",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## API IA\n- prompt Engineering",
+        "height": 96,
+        "width": 208,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        -208
+      ],
+      "id": "a6bd507f-d83c-4bf2-9115-ce8605248004",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const source = $('Edit Fields').item.json;\nconst base = $input.item.json;\n\n// Récupération du texte brut généré par l'IA\nconst rawText = base?.google?.generated_text ?? \"\";\nlet text = rawText.trim();\n\n// Extraction stricte du contenu JSON (isole le contenu entre { et })\nconst jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\nif (jsonMatch) {\n  text = jsonMatch[0];\n}\n\nlet data = {};\ntry {\n  data = JSON.parse(text);\n} catch (e) {\n  // Fallback si l'IA génère un format invalide\n  data = {\n    titre: \"Erreur de parsing JSON\",\n    resume: \"La réponse renvoyée par l'IA n'est pas un JSON valide.\",\n    criticite: 0,\n    niveau: \"Inconnu\",\n    secteur_cible: \"Inconnu\",\n    technologies_concernees: [],\n    attaquants: \"Inconnu\",\n    victimes: \"Inconnu\",\n    techniques_cyber: [],\n    outils_utilises: [],\n    impact_potentiel_ou_reel: \"Inconnu\",\n    recommandation: \"Vérifier la réponse brute dans les logs de l'automatisation.\"\n  };\n}\n\n// Fonction de sécurisation pour garantir le type Array[]\nconst ensureArray = (val) => {\n  if (Array.isArray(val)) return val;\n  if (typeof val === 'string' && val.trim() !== '') return [val];\n  return [];\n};\n\n// Structuration finale pour PostgreSQL\nreturn {\n  json: {\n    hash: source.hash,\n    auteur: source.auteur,\n    date: source.date,\n    lien: source.lien ?? source.source_url ?? \"#\",\n    categories: source.categories,\n    titre_original: source.titrePropre ?? source.titre,\n\n    titre: data.titre ?? \"Inconnu\",\n    resume: data.resume ?? \"Inconnu\",\n    criticite: Number.isInteger(data.criticite) ? data.criticite : 0,\n    niveau: data.niveau ?? \"Inconnu\",\n    attaquants: data.attaquants ?? \"Inconnu\",\n    victimes: data.victimes ?? \"Inconnu\",\n    \n    techniques: ensureArray(data.techniques_cyber ?? data.techniques),\n    outils_utilises: ensureArray(data.outils_utilises),\n    technologies_concernees: ensureArray(data.technologies_concernees),\n    \n    impact: data.impact_potentiel_ou_reel ?? data.impact ?? \"Inconnu\",\n    recommandation_suez: data.recommandation ?? \"Aucune recommandation fournie.\",\n    secteur_cible: data.secteur_cible ?? \"Inconnu\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        -80
+      ],
+      "id": "1af7251f-6c1e-4f7f-9bfb-42c86b857eb8",
+      "name": "Code in JavaScript8"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "articles",
+          "mode": "list",
+          "cachedResultName": "articles"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "hash": "={{ $json.hash }}",
+            "titre": "={{ $json.titre }}",
+            "date": "={{ $json.date }}",
+            "lien": "={{ $json.lien }}",
+            "auteur": "={{ $json.auteur }}",
+            "description": "={{ $json.description }}",
+            "resume": "={{ $json.resume }}",
+            "categories": "={{ $json.categories }}",
+            "niveau": "={{ $json.niveau }}",
+            "attaquants": "={{ $json.attaquants }}",
+            "outils_utilises": "={{ $json.outils_utilises }}",
+            "techniques": "={{ $json.techniques }}",
+            "victimes": "={{ $json.victimes }}",
+            "impact": "={{ $json.impact }}",
+            "titrepropre": "={{ $json.titrepropre }}",
+            "descriptionpropre": "={{ $json.descriptionpropre }}",
+            "criticite": "={{ $json.criticite }}",
+            "pertinence_score": 0
+          },
+          "matchingColumns": [
+            "hash"
+          ],
+          "schema": [
+            {
+              "id": "hash",
+              "displayName": "hash",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "titre",
+              "displayName": "titre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "lien",
+              "displayName": "lien",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "auteur",
+              "displayName": "auteur",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "categories",
+              "displayName": "categories",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "resume",
+              "displayName": "resume",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "criticite",
+              "displayName": "criticite",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "niveau",
+              "displayName": "niveau",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "attaquants",
+              "displayName": "attaquants",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "victimes",
+              "displayName": "victimes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "techniques",
+              "displayName": "techniques",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "outils_utilises",
+              "displayName": "outils_utilises",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "impact",
+              "displayName": "impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "recommandation_suez",
+              "displayName": "recommandation_suez",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "titrepropre",
+              "displayName": "titrepropre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "descriptionpropre",
+              "displayName": "descriptionpropre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "pertinence_score",
+              "displayName": "pertinence_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "pertinence_declencheurs",
+              "displayName": "pertinence_declencheurs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "pertinence_zones",
+              "displayName": "pertinence_zones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "pertinence_stack",
+              "displayName": "pertinence_stack",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "pertinence_justification",
+              "displayName": "pertinence_justification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "routing",
+              "displayName": "routing",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "source_url",
+              "displayName": "source_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "source_date",
+              "displayName": "source_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "secteur_cible",
+              "displayName": "secteur_cible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "technologies_concernees",
+              "displayName": "technologies_concernees",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -512,
+        496
+      ],
+      "id": "f8077d39-dcfc-46c8-8f61-0b6908481bb5",
+      "name": "Insert or update rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "fqmJRp9K7lji5Rgf",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1b58d293-58d2-4b3b-9cec-8714a326c93c",
+              "leftValue": "={{$json.criticite}}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "9fb000f4-b141-475c-bc29-11df9bc3f48f",
+              "leftValue": "={{$json.titre}}",
+              "rightValue": "Hors-sujet",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -528,
+        224
+      ],
+      "id": "e1c60f8b-7bb8-4a12-8cf8-11663aa3f8c0",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "content": "## Insertion SQL Or Update\n- New data Parse IA",
+        "height": 112,
+        "width": 198,
+        "color": "#0F1334"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        496
+      ],
+      "id": "266ec6d0-0784-4f9a-b9fd-90b589c784cd",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Requête SQL\n- hash existant",
+        "height": 128,
+        "width": 160,
+        "color": "#0F1334"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        0
+      ],
+      "id": "accf12bf-306b-4295-be38-dc43b530c29c",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Insertion SQL\n- Insère les données",
+        "height": 112,
+        "width": 208,
+        "color": "#0F1334"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        624
+      ],
+      "id": "9cd800e1-912b-4296-b767-da68578f4b4b",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "## Donnée final\n- Décodage et le nettoyage de la réponse IA\n\n- Gestion des eerreur",
+        "height": 144,
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        -96
+      ],
+      "id": "18c24df1-e308-4692-99ca-851017068ef8",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Pré-Fltrage & Déduplication\n- Supprime les doublons\n\n- Pré-filtrage\n- Cherche des mots-clés",
+        "height": 128,
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1728,
+        768
+      ],
+      "id": "fb3f12fe-adae-481c-b9a8-c495748bb0dc",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Fetch / GET\n- Lecture des data",
+        "height": 96,
+        "width": 160,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        -608
+      ],
+      "id": "0e85c48d-3ae7-4615-b36e-eb9edc12f345",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "articles",
+          "mode": "list",
+          "cachedResultName": "articles"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "criticite": 0,
+            "pertinence_score": 0,
+            "hash": "={{ $json.hash }}",
+            "titre": "={{ $json.titre }}",
+            "lien": "={{ $json.lien }}",
+            "date": "={{ $json.date }}",
+            "auteur": "={{ $json.auteur }}",
+            "description": "={{ $json.description }}",
+            "categories": "={{ $json.categories }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "hash",
+              "displayName": "hash",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "titre",
+              "displayName": "titre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lien",
+              "displayName": "lien",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "auteur",
+              "displayName": "auteur",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "categories",
+              "displayName": "categories",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resume_analytique",
+              "displayName": "resume_analytique",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "criticite",
+              "displayName": "criticite",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "niveau",
+              "displayName": "niveau",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "attaquants",
+              "displayName": "attaquants",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "victimes",
+              "displayName": "victimes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "techniques",
+              "displayName": "techniques",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "outils_utilises",
+              "displayName": "outils_utilises",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "impact",
+              "displayName": "impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recommandation_suez",
+              "displayName": "recommandation_suez",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "titrepropre",
+              "displayName": "titrepropre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "descriptionpropre",
+              "displayName": "descriptionpropre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pertinence_score",
+              "displayName": "pertinence_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pertinence_declencheurs",
+              "displayName": "pertinence_declencheurs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pertinence_zones",
+              "displayName": "pertinence_zones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pertinence_stack",
+              "displayName": "pertinence_stack",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pertinence_justification",
+              "displayName": "pertinence_justification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "routing",
+              "displayName": "routing",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_url",
+              "displayName": "source_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_date",
+              "displayName": "source_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "secteur_cible",
+              "displayName": "secteur_cible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "technologies_concernees",
+              "displayName": "technologies_concernees",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1280,
+        448
+      ],
+      "id": "e48e1c64-5008-45a4-9b2d-66d01a556762",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "fqmJRp9K7lji5Rgf",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Condition IF\n- Criticité > 5\n",
+        "height": 112,
+        "width": 198,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        224
+      ],
+      "id": "e08c94d8-ebe6-4451-a347-5f5b0b0ef7c7",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.edenai.run/v2/text/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization ",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYjg2MzM4ZGItODQ1Zi00MDAyLTllZDctOTc4MmNjYzVlMDBmIiwidHlwZSI6ImFwaV90b2tlbiJ9.v_m3d8YSpnwaaEVOgkGJidRJWifWdHikEOa0b-MdcyY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"providers\": \"google\",\n  \"model\": \"gemini-2.5-flash\",\n  \"text\": \"{{$json.DescriptionPropre}}\",\n  \"chatbot_global_action\": \"Tu es un analyste en cybersécurité spécialisé dans la protection des infrastructures critiques (OIV) et des services essentiels en France (secteurs de l'eau, de l'assainissement, de la gestion des déchets, et technologies industrielles associées).\\n\\nAnalyse le texte en te focalisant sur les menaces, vulnérabilités ou incidents qui touchent ces secteurs en France, ou les technologies modernes de leur supply chain informatique et réseau (environnements Azure, passerelles Zscaler, agents Crowdstrike, architectures Cloud, ou systèmes industriels OT/SCADA).\\n\\nSi l'article est totalement hors-sujet, retourne le JSON ci-dessous en mettant 'Hors-sujet' dans le champ 'titre', 0 dans 'criticite', et 'Inconnu' dans TOUS les autres champs.\\n\\nSinon, retourne UNIQUEMENT un JSON valide avec exactement cette structure (sans ajouter de texte avant ou après, et sans fioritures Markdown) :\\n\\n{\\n  \\\"titre\\\": \\\"court titre reformulé en français\\\",\\n  \\\"resume\\\": \\\"résumé clair de l'incident ou de la menace en 4 à 6 phrases\\\",\\n  \\\"criticite\\\": 0,\\n  \\\"niveau\\\": \\\"Faible | Moyen | Élevé | Critique\\\",\\n  \\\"secteur_cible\\\": \\\"Eau | Déchets | Multi-services | Infrastructures critiques\\\",\\n  \\\"technologies_concernees\\\": [\\\"liste des technos citées type Azure, Zscaler, Crowdstrike, SCADA, Cloud, etc.\\\"],\\n  \\\"attaquants\\\": \\\"groupe ou acteur de la menace si mentionné sinon Inconnu\\\",\\n  \\\"victimes\\\": \\\"entreprises, collectivités ou entités françaises visées\\\",\\n  \\\"techniques_cyber\\\": [\\\"liste des techniques ou vulnérabilités exploitées\\\"],\\n  \\\"outils_utilises\\\": [\\\"liste des malwares, ransomwares, chevaux de Troie ou outils cyber précis cités (ex: Cobalt Strike, LockBit) si mentionnés, sinon laisser vide\\\"],\\n  \\\"impact_potentiel_ou_reel\\\": \\\"impact concret sur les services d'eau/déchets ou sur l'infrastructure informatique en France\\\",\\n  \\\"recommandation\\\": \\\"conseil de sécurité court adapté aux infrastructures d'utilité publique\\\"\\n}\\n\\nRègles :\\n- criticite doit être un nombre entier de 0 à 10\\n- ne jamais inventer de noms précis non présents dans le texte\\n- si une info manque, mets 'Inconnu' ou un tableau vide [] selon le type de champ\\n- Ne pas entourer la réponse de balises ```json ou ```. Ta réponse doit commencer par { et finir par }.\"\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -912,
+        -80
+      ],
+      "id": "f09431e9-398b-4ace-bd1c-267f03cd8231",
+      "name": "HTTP Request2",
+      "retryOnFail": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript8": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Insert or update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8c145d5c-f381-4f61-909c-bc18ed078460",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "47580d5e0e3a34d993df1f31cf80b7e44ce68af550b0866fbd99ca759b56a029"
+  },
+  "id": "gLzoLbbuY1O77WLq",
+  "tags": []
+}
