@@ -1,0 +1,13 @@
+const items = [
+  { url: "https://www.bleepingcomputer.com/feed/", source: "BleepingComputer" },
+  { url: "https://feeds.feedburner.com/TheHackersNews", source: "The Hacker News" },
+  { url: "https://feeds.feedburner.com/Securityweek", source: "SecurityWeek" },
+  { url: "https://www.sans.org/newsletters/newsbites/rss", source: "SANS NewsBites" },
+  { url: "https://www.01net.com/rss/actualites/", source: "01net" },
+  { url: "https://industrialcyber.co/feed/", source: "Industrial Cyber" },
+  { url: "https://www.cert.ssi.gouv.fr/feed/", source: "CERT-FR" },
+  { url: "https://securityaffairs.com/feed", source: "Security Affairs" },
+  { url: "https://therecord.media/feed", source: "The Record" },
+];
+
+return items.map(item => ({ json: item }));

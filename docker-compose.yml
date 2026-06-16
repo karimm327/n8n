@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  n8n:
+    image: n8nio/n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      - N8N_RUNNERS_MAX_OLD_SPACE_SIZE=4096
+      - N8N_ALLOW_EXEC=true
+      - N8N_DEFAULT_BINARY_DATA_MODE=memory
+      - N8N_RESTRICT_FILE_ACCESS_TO=
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - BREVO_API_KEY=${BREVO_API_KEY}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /home/ben-haj/n8n-files:/files
+    depends_on:
+      - postgres
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - /home/ben-haj/n8n-files:/usr/share/nginx/html
+
+volumes:
+  postgres_data:
+  n8n_data:
